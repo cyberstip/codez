@@ -1,0 +1,12 @@
+cron:
+- description: crawl_trees
+  url: /admin/crawl_trees
+  schedule: every 30 minutes
+
+- description: crawl_cq
+  url: /admin/crawl_cq
+  schedule: every 30 minutes
+
+- description: crawl_bots
+  url: /admin/crawl_bots
+  schedule: every 1 minutes

@@ -1,0 +1,54 @@
+[
+  {
+    "name": "constant_poisson_source",
+    "params": {
+      "rate": 1.0
+    }
+  },
+  {
+    "name": "duplicator",
+    "params":
+      "archetype": [
+        {
+          "name": "gaussian_delay",
+          "params": {
+            "mean": 30,
+            "stddev": 10
+          }
+        },
+        {
+          "name": "k_server_gaussian",
+          "params": {
+            "servers": "number_of_servers",
+            "mean": "mean_time",
+            "stddev": 10
+          }
+        }
+      ],
+      "map_params": {
+        "mean_time": [
+          30,
+          60
+        ],
+        "number_of_servers": [
+          40,
+          40
+        ]
+      }
+    }
+  },
+  {
+    "type": "tree",
+    "params": {
+      "closure_rate": 5
+    }
+  },
+  {
+    "type": "k-server-gaussian",
+    "params": {
+      "servers": 1,
+      "mean": 3.0,
+      "stddev": 1.0
+    }
+  }
+]
