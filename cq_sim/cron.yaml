@@ -1,0 +1,4 @@
+cron:
+- description: crawl_trees
+  url: /admin/crawl_trees
+  schedule: every 30 minutes
