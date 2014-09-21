@@ -10,6 +10,12 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: CQRequestLoad
+  properties:
+  - name: project
+  - name: generated
+    direction: desc
+
 - kind: TreeStatistics
   properties:
   - name: status_app

@@ -2,6 +2,7 @@ import contextlib
 import collections
 import datetime
 import json
+import logging
 import urllib
 
 from google.appengine.api import urlfetch
@@ -34,6 +35,8 @@ def query_cq_status(project, action, params=None):
   if result.status_code != 200:
     raise ValueError('for url %s status was %d' % (
       url, result.status_code))
+
+  logging.info('crawling %s...' % url)
 
   return_json = json.loads(result.content)
   results = return_json['results']

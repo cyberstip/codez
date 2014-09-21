@@ -49,6 +49,7 @@ class MainPage(BaseHandler):
     for tree in controller.TREES:
       tree_urls.append((tree, urllib.quote(tree)))
     context['tree_urls'] = tree_urls
+    context['projects'] = controller.PROJECTS
 
     self.render_response('main.html', **context)
 
@@ -60,4 +61,4 @@ class CrawlTrees(BaseHandler):
 
 class CrawlCQ(BaseHandler):
   def get(self):
-    controller.write_trees()
+    controller.write_cq_load()

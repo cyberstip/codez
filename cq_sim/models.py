@@ -19,7 +19,7 @@ class CQLoadSegment(EndpointsModel):
 
 class CQRequestLoad(EndpointsModel):
   project = ndb.StringProperty()
-  segment_length = ndb.IntegerProperty()
+  segment_length_minutes = ndb.IntegerProperty()
   periodicity = ndb.StringProperty()
   segments = ndb.StructuredProperty(CQLoadSegment, repeated=True)
   
