@@ -12,6 +12,7 @@ class TreeStatistics(EndpointsModel):
 
 class CQLoadSegment(EndpointsModel):
   segment = ndb.IntegerProperty()
+  segment_start = ndb.StringProperty()
   request_count = ndb.IntegerProperty()
   segment_count = ndb.IntegerProperty()
   requests_per_second = ndb.FloatProperty()

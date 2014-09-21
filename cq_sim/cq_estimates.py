@@ -31,7 +31,7 @@ def query_cq_status(project, action, params=None):
   if params:
     url = url + '?' + urllib.urlencode(params)
 
-  result = urlfetch.fetch(url)
+  result = urlfetch.fetch(url, deadline=60)
   if result.status_code != 200:
     raise ValueError('for url %s status was %d' % (
       url, result.status_code))

@@ -1,6 +1,8 @@
-import cq_estimates
 import datetime
+
+import cq_estimates
 import models
+import time_helpers
 import tree_estimation
 
 
@@ -33,11 +35,16 @@ def write_trees():
 
 def write_cq_project_load(project, segment_length=30, periodicity='weekly'):
   segment_data = cq_estimates.crawl_segments(
-      project, segment_length=30, periodicity=periodicity)
+      project, segment_length=30, periodicity=periodicity, end=end)
   segments = []
   for seg, data in segment_data.iteritems():
     segments.append(models.CQLoadSegment(
       segment=seg,
+      segment_start=time_helpers.seg_desc(
+        seg,
+        segment_length=segment_length,
+        periodicity=periodicity,
+      ),
       request_count=data['reqs'],
       segment_count=data['segs'],
       requests_per_second=data['rps'],

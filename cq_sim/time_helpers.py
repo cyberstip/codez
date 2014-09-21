@@ -6,17 +6,24 @@ import datetime
 def weekly_start(time):
   start_day = time
   # Go back until we hit Sunday.
-  while start_day.weekday():
+  while start_day.weekday() != 6:
     start_day = start_day - datetime.timedelta(days=1)
 
   # Start at the beginning on Sunday.
   return start_day.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+def seg_desc(seg, segment_length=30, periodicity='weekly'):
+  start_day = PERIODICITIES[periodicity]['start_func'](datetime.datetime.now())
+  seg_day = start_day + datetime.timedelta(minutes=seg * segment_length)
+  return seg_day.strftime(PERIODICITIES[periodicity]['desc_format'])
+
+
 PERIODICITIES = {
   'weekly': {
     'periodicity_length': 7 * 24 * 60,
     'start_func': weekly_start,
+    'desc_format': '%A %H:%M'
   }
 }
 
