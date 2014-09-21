@@ -10,6 +10,7 @@ from webapp2_extras import jinja2
 
 import controller
 
+
 class BaseHandler(webapp2.RequestHandler):
   """Provide a cached Jinja environment to each request."""
 
@@ -51,6 +52,12 @@ class MainPage(BaseHandler):
 
     self.render_response('main.html', **context)
 
+
 class CrawlTrees(BaseHandler):
+  def get(self):
+    controller.write_trees()
+
+
+class CrawlCQ(BaseHandler):
   def get(self):
     controller.write_trees()

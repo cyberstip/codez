@@ -20,5 +20,11 @@ class CQWeatherApi(remote.Service):
     """List recorded tree statistics measured over time."""
     return query.order(-models.TreeStatistics.generated)
 
+  @models.CQRequestLoad.query_method(path='cq.load', name='cq.load',
+      query_fields=('limit', 'pageToken', 'project',))
+  def get_cq_load(self, query):
+    """List recorded tree statistics measured over time."""
+    return query.order(-models.TreeStatistics.generated)
+
 
 APPLICATION = endpoints.api_server([CQWeatherApi])
