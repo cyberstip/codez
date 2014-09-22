@@ -17,4 +17,72 @@
         </div>
       </div>
     </div>
+{% for project in projects %}
+<div id="chart-{{ project }}"></div>
+<div><hr/></div>
+{% endfor %}
+<script src="/js/d3.min.js"></script>
+<script src="/js/rickshaw.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+
+<script>
+
+{% for project in projects %}
+var ajax_graph = new Rickshaw.Graph.Ajax( {
+element: document.getElementById("chart-{{ project }}"),
+            width: 660,
+            height: 500,
+            renderer: 'line',
+            dataURL: '/_ah/api/cqweather/v1/cq.load?limit=1&project={{ project }}',
+            onData: function(d) {
+              var data = d['items'][0]['segments'];
+              this.raw_data = data;
+              var x_y_data = _.map(data, function(q){
+                  return {
+                    x: parseInt(q['segment']),
+                    y: q['requests_per_second']
+                  };
+                });
+              var sorted_x_y_data = _.sortBy(
+                x_y_data, function(x){return x.x;});
+              return [{
+                name: '{{ project }} CQ Clicks Per Second',
+                data: sorted_x_y_data,
+                color: "#c05020"
+              }];
+            },
+            onComplete: function(transport) {
+                var graph = transport.graph;
+                var yAxis = new Rickshaw.Graph.Axis.Y({
+                        graph: graph,
+                        tickFormat: function(y){return y.toPrecision(5);}
+                });
+
+                var seg_map = {};
+                _.each(this.raw_data, function(d){
+                   seg_map[d['segment']] = d['segment_start'] 
+                });
+                var format = function(n) {
+                  return seg_map[n]; }
+                var xAxis = new Rickshaw.Graph.Axis.X({
+                        graph: graph,
+                        tickFormat: format
+                });
+                var utc_format = function(n) {
+                  return seg_map[n] + ' UTC'; }
+                var detail = new Rickshaw.Graph.HoverDetail({
+                    graph: graph,
+                    xFormatter: utc_format,
+                    yFormatter: function(y){return y.toPrecision(5);}
+                });
+
+                xAxis.render();
+                yAxis.render();
+
+                graph.render();
+            }
+        } );
+{% endfor %}
+</script>
 {% endblock %}

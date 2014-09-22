@@ -17,6 +17,10 @@ handlers:
   login: admin
   secure: always
 
+- url: /js
+  static_dir: js
+  secure: always
+
 - url: /css
   static_dir: css
   secure: always

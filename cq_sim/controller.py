@@ -35,7 +35,7 @@ def write_trees():
 
 def write_cq_project_load(project, segment_length=30, periodicity='weekly'):
   segment_data = cq_estimates.crawl_segments(
-      project, segment_length=30, periodicity=periodicity, end=end)
+      project, segment_length=30, periodicity=periodicity)
   segments = []
   for seg, data in segment_data.iteritems():
     segments.append(models.CQLoadSegment(
@@ -49,6 +49,8 @@ def write_cq_project_load(project, segment_length=30, periodicity='weekly'):
       segment_count=data['segs'],
       requests_per_second=data['rps'],
     ))
+
+  segments.sort(key=lambda x: x.segment)
 
   models.CQRequestLoad(
       project=project,
