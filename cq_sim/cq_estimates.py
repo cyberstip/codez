@@ -51,7 +51,7 @@ def query_cq_status(project, action, params=None):
 def crawl_segments(
     project, start=None, end=None, segment_length=30, periodicity='weekly'):
   segments, seg_counts = get_crawl_segments(
-      start, end, segment_length=30, periodicity='weekly')
+      start, end, segment_length=segment_length, periodicity=periodicity)
 
   timestamp_segments = [
       (time_helpers.to_timestamp(start), time_helpers.to_timestamp(end))
