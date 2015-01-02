@@ -4,6 +4,7 @@ from datetime import datetime
 import functools
 import json
 import urllib2
+import uuid
 import sys
 
 @functools.total_ordering
@@ -137,6 +138,7 @@ def link_jobs_to_trigger(records):
 class PatchStart(CQApiRecord):
   pass
 
+
 class PatchStop(CQApiRecord):
   pass
 
@@ -153,6 +155,60 @@ RECORD_TYPES = {
 def constructor(record):
   return RECORD_TYPES.get(record['fields'].get('action'), CQApiRecord)(**record)
 
+
+def gen_zipkin_uuid():
+  return uuid.uuid4().hex[0:16]
+
+
+def datetime_to_timestamp(dt):
+  return (dt - datetime(1970, 1, 1)).total_seconds()
+
+
+class ZipkinSpan(object):
+  def __init__(self, name, trace_id, span_id, parent_id, annotations):
+    self.name = name
+    self.trace_id = trace_id
+    self.span_id = span_id
+    self.parent_id = parent_id
+    self.annotations = {}
+
+    for annot_name, annot_value in annotations.iteritems():
+      if annot_name in ('cs', 'cr', 'ss', 'sr'):
+        # timestamps are integers in microseconds
+        self.annotations.append({
+            'key': annot_name,
+            'type': 'timestamp',
+            'value': int(datetime_to_timestamp(annot_value) * 1000000),
+            'name': self.name,
+        })
+
+  def render(self):
+    result = {
+        'trace_id': self.trace_id,
+        'span_id': self.span_id,
+        'name': self.name,
+        'annotations': self.annotations,
+    }
+
+    if self.parent_id:
+      result['parent_span_id'] = self.parent_id
+
+    return result
+
+
+def construct_spans(records):
+  trace_id = gen_zipkin_uuid()
+
+  root_span = ZipkinSpan('cq_request', trace_id, trace_id, None, {
+      'sr': records[0].timestamp,
+      'ss': records[-1].timestamp,
+  })
+  spans = [root_span]
+  for record in records[1:-1]:
+    spans.append(ZipkinSpan(
+        record['service_name'], trace_id, gen_zipkin_uuid(), trace_id, record))
+
+  return spans
 
 def main():
   parser = argparse.ArgumentParser()
@@ -172,20 +228,17 @@ def main():
   sorted_records = sorted(map(constructor, items['results']))
   print list(chunk_attempts(sorted_records))
   for attempt, record_set in enumerate(chunk_attempts(sorted_records)):
-    print 'hooray!', attempt
     if attempt != 0:
       continue
-    jobs_updates = []
-    for record in record_set:
+    jobs_updates = [record_set[0]]
+    for record in record_set[1:-1]:
       if isinstance(
           record, VerifierStart) or isinstance(record, VerifierJobsUpdate):
         jobs_updates.append(record)
-      #item._tags
-      #print item['tags'], 
-      #print item['fields'].get('action'), item['tags']
-
-    for new_jobs in link_jobs_to_trigger(return_new_jobs(jobs_updates)):
-      print new_jobs
+    jobs_updates.append(record_set[-1])
+    for span in construct_spans(
+        link_jobs_to_trigger(return_new_jobs(jobs_updates))):
+      print span.render()
 
   return 0
 
