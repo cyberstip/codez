@@ -133,6 +133,8 @@ def link_jobs_to_trigger(records):
             builder_id(job_update.job_dict['master'],
                        job_update.job_dict['builder'])]
         yield zk_data
+    else:
+      yield record
 
 
 class PatchStart(CQApiRecord):
@@ -153,7 +155,8 @@ RECORD_TYPES = {
 
 
 def constructor(record):
-  return RECORD_TYPES.get(record['fields'].get('action'), CQApiRecord)(**record)
+  return RECORD_TYPES.get(
+      record['fields'].get('action'), lambda **kwargs: None)(**record)
 
 
 def gen_zipkin_uuid():
@@ -170,7 +173,7 @@ class ZipkinSpan(object):
     self.trace_id = trace_id
     self.span_id = span_id
     self.parent_id = parent_id
-    self.annotations = {}
+    self.annotations = []
 
     for annot_name, annot_value in annotations.iteritems():
       if annot_name in ('cs', 'cr', 'ss', 'sr'):
@@ -226,20 +229,13 @@ def main():
   with closing(urllib2.urlopen(url)) as f:
     items = json.load(f)
 
-  sorted_records = sorted(map(constructor, items['results']))
-  print list(chunk_attempts(sorted_records))
-  for attempt, record_set in enumerate(chunk_attempts(sorted_records)):
-    if attempt != 0:
-      continue
-    jobs_updates = [record_set[0]]
-    for record in record_set[1:-1]:
-      if isinstance(
-          record, VerifierStart) or isinstance(record, VerifierJobsUpdate):
-        jobs_updates.append(record)
-    jobs_updates.append(record_set[-1])
+  sorted_records = sorted(filter(bool, map(constructor, items['results'])))
+  spans = []
+  for record_set in chunk_attempts(sorted_records):
     for span in construct_spans(
-        link_jobs_to_trigger(return_new_jobs(jobs_updates))):
-      print span.render()
+        link_jobs_to_trigger(return_new_jobs(record_set))):
+      spans.append(span.render())
+  print json.dumps(spans, indent=2)
 
   return 0
 
