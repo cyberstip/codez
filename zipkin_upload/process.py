@@ -32,6 +32,10 @@ class CQApiRecord(object):
     return self.timestamp < other.timestamp
 
 
+def builder_id(master, builder):
+  return '%s/%s' % (master, builder)
+
+
 class JobUpdate(object):
   def __init__(self, timestamp, job_dict, rietveld_timestamp):
     self.timestamp = timestamp
@@ -52,13 +56,12 @@ class JobUpdate(object):
 
   def zipkin_data(self):
     return {
-        'sr': self.job_dict['timestamp'],
         'ss': self.rietveld_timestamp,
         'cr': self.timestamp,
         'host': self.job_dict['slave'],
-        'service_name': (self.job_dict['master'] + '/' +
-          self.job_dict['builder']),
-    }
+        'service_name': builder_id(
+            self.job_dict['master'], self.job_dict['builder']),
+        }
 
 
 class VerifierJobsUpdate(CQApiRecord):
@@ -70,35 +73,85 @@ class VerifierJobsUpdate(CQApiRecord):
       for builder in master.itervalues():
         for job in builder['rietveld_results']:
           if job['result'] != -1:
-            self.job_updates.add(JobUpdate(self.timestamp, job,
-              builder['timestamp']))
+            self.job_updates.add(JobUpdate(
+                self.timestamp,
+                job,
+                datetime.strptime(
+                    builder['timestamp'], "%Y-%m-%d %H:%M:%S.%f")))
+
+
+class VerifierStart(CQApiRecord):
+  def __init__(self, *args, **kwargs):
+    super(VerifierStart, self).__init__(*args, **kwargs)
+    self.tryjobs = set()
+    for mastername, master_builders in self._fields['tryjobs'].iteritems():
+      for builder in master_builders.keys():
+        self.tryjobs.add(builder_id(mastername, builder))
 
 
 def return_new_jobs(jobs_updates):
   total_jobs = set()
   for update in jobs_updates:
-    diff = update.job_updates - total_jobs
-    if diff:
-      total_jobs |= diff
-      yield diff
+    if isinstance(update, VerifierJobsUpdate):
+      diff = update.job_updates - total_jobs
+      if diff:
+        total_jobs |= diff
+        update.job_updates = diff
+        yield update
+    else:
+      yield update
 
 
-def enumerate_attempt(records):
-  attempt = None
+def chunk_attempts(records):
+  current_chunk = None
   for record in records:
-    if record._fields.get('action') == 'patch_start':
-      if attempt is None:
-        attempt = 0
-      else:
-        attempt = attempt + 1
-    yield (attempt, record)
+    if isinstance(record, PatchStart):
+      current_chunk = [record]
+    elif isinstance(record, PatchStop):
+      if current_chunk is not None:
+        current_chunk.append(record)
+        yield current_chunk
+        current_chunk = None
+    elif current_chunk is not None:
+      current_chunk.append(record)
+
+
+def link_jobs_to_trigger(records):
+  triggers = {}
+  for record in records:
+    if isinstance(record, VerifierStart):
+      for trigger in record.tryjobs:
+        triggers[trigger] = record.timestamp
+    elif isinstance(record, VerifierJobsUpdate):
+      for job_update in record.job_updates:
+        zk_data = job_update.zipkin_data()
+        zk_data['cs'] = triggers[
+            builder_id(job_update.job_dict['master'],
+                       job_update.job_dict['builder'])]
+        zk_data['sr'] = triggers[
+            builder_id(job_update.job_dict['master'],
+                       job_update.job_dict['builder'])]
+        yield zk_data
+
+
+class PatchStart(CQApiRecord):
+  pass
+
+class PatchStop(CQApiRecord):
+  pass
+
+
+
+RECORD_TYPES = {
+    'verifier_jobs_update': VerifierJobsUpdate,
+    'verifier_start': VerifierStart,
+    'patch_start': PatchStart,
+    'patch_stop': PatchStop,
+}
 
 
 def constructor(record):
-  if record['fields'].get('action') == 'verifier_jobs_update':
-    return VerifierJobsUpdate(**record)
-  else:
-    return CQApiRecord(**record)
+  return RECORD_TYPES.get(record['fields'].get('action'), CQApiRecord)(**record)
 
 
 def main():
@@ -117,21 +170,22 @@ def main():
     items = json.load(f)
 
   sorted_records = sorted(map(constructor, items['results']))
-  filtered_records = [x for x in sorted_records if 'action' in x._fields]
-
-  jobs_updates = []
-  for attempt, record in enumerate_attempt(filtered_records):
+  print list(chunk_attempts(sorted_records))
+  for attempt, record_set in enumerate(chunk_attempts(sorted_records)):
+    print 'hooray!', attempt
     if attempt != 0:
       continue
-    if isinstance(record, VerifierJobsUpdate):
-      jobs_updates.append(record)
-    #item._tags
-    #print item['tags'], 
-    #print item['fields'].get('action'), item['tags']
+    jobs_updates = []
+    for record in record_set:
+      if isinstance(
+          record, VerifierStart) or isinstance(record, VerifierJobsUpdate):
+        jobs_updates.append(record)
+      #item._tags
+      #print item['tags'], 
+      #print item['fields'].get('action'), item['tags']
 
-  for new_jobs in return_new_jobs(jobs_updates):
-    for job in new_jobs:
-      print job.zipkin_data()
+    for new_jobs in link_jobs_to_trigger(return_new_jobs(jobs_updates)):
+      print new_jobs
 
   return 0
 
