@@ -54,7 +54,10 @@ class JobUpdate(object):
     return {
         'sr': self.job_dict['timestamp'],
         'ss': self.rietveld_timestamp,
-        'cr': self.timestamp
+        'cr': self.timestamp,
+        'host': self.job_dict['slave'],
+        'service_name': (self.job_dict['master'] + '/' +
+          self.job_dict['builder']),
     }
 
 
@@ -67,7 +70,17 @@ class VerifierJobsUpdate(CQApiRecord):
       for builder in master.itervalues():
         for job in builder['rietveld_results']:
           if job['result'] != -1:
-            self.job_updates.add(JobUpdate(self.timestamp, job))
+            self.job_updates.add(JobUpdate(self.timestamp, job,
+              builder['timestamp']))
+
+
+def return_new_jobs(jobs_updates):
+  total_jobs = set()
+  for update in jobs_updates:
+    diff = update.job_updates - total_jobs
+    if diff:
+      total_jobs |= diff
+      yield diff
 
 
 def enumerate_attempt(records):
@@ -105,14 +118,20 @@ def main():
 
   sorted_records = sorted(map(constructor, items['results']))
   filtered_records = [x for x in sorted_records if 'action' in x._fields]
+
+  jobs_updates = []
   for attempt, record in enumerate_attempt(filtered_records):
     if attempt != 0:
       continue
     if isinstance(record, VerifierJobsUpdate):
-      print record.timestamp, attempt, record.job_updates
+      jobs_updates.append(record)
     #item._tags
     #print item['tags'], 
     #print item['fields'].get('action'), item['tags']
+
+  for new_jobs in return_new_jobs(jobs_updates):
+    for job in new_jobs:
+      print job.zipkin_data()
 
   return 0
 
