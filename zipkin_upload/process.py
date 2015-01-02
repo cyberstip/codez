@@ -33,9 +33,10 @@ class CQApiRecord(object):
 
 
 class JobUpdate(object):
-  def __init__(self, timestamp, job_dict):
+  def __init__(self, timestamp, job_dict, rietveld_timestamp):
     self.timestamp = timestamp
     self.job_dict = job_dict
+    self.rietveld_timestamp = rietveld_timestamp
 
   def __eq__(self, other):
     return self.job_dict == other.job_dict
@@ -49,6 +50,13 @@ class JobUpdate(object):
   def __repr__(self):
     return 'JobUpdate: %s' % repr(self.job_dict)
 
+  def zipkin_data(self):
+    return {
+        'sr': self.job_dict['timestamp'],
+        'ss': self.rietveld_timestamp,
+        'cr': self.timestamp
+    }
+
 
 class VerifierJobsUpdate(CQApiRecord):
   def __init__(self, *args, **kwargs):
@@ -58,7 +66,8 @@ class VerifierJobsUpdate(CQApiRecord):
     for master in self._fields['jobs'].itervalues():
       for builder in master.itervalues():
         for job in builder['rietveld_results']:
-          self.job_updates.add(JobUpdate(self.timestamp, job))
+          if job['result'] != -1:
+            self.job_updates.add(JobUpdate(self.timestamp, job))
 
 
 def enumerate_attempt(records):
