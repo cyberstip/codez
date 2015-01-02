@@ -3,6 +3,7 @@ from contextlib import closing
 from datetime import datetime
 import functools
 import json
+import requests
 import urllib2
 import uuid
 import sys
@@ -214,11 +215,21 @@ def construct_spans(records):
 
   return spans
 
+
+def send_to_restkin(url, spans):
+  headers = {'content-type': 'application/json'}
+  r = requests.post(url, data=json.dumps(spans), headers=headers)
+  print r
+
+
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('issue', type=int, help='rietveld issue')
   parser.add_argument(
       'patchset', type=int, nargs='?', help='patchset', default=1)
+  parser.add_argument('--restkin-url',
+                      default='http://localhost:6956/v1.0/restkin/trace',
+                      help='URL to send restkin data')
   args = parser.parse_args()
 
   url_template = ('https://chromium-cq-status.appspot.com/'
@@ -235,7 +246,7 @@ def main():
     for span in construct_spans(
         link_jobs_to_trigger(return_new_jobs(record_set))):
       spans.append(span.render())
-  print json.dumps(spans, indent=2)
+  send_to_restkin(args.restkin_url, spans)
 
   return 0
 
