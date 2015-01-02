@@ -197,6 +197,7 @@ class ZipkinSpan(object):
 
 
 def construct_spans(records):
+  records = list(records)
   trace_id = gen_zipkin_uuid()
 
   root_span = ZipkinSpan('cq_request', trace_id, trace_id, None, {
