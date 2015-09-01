@@ -543,8 +543,9 @@ class KServerAmalgamator(Source):
 
     flattened_points = [item for sublist in initial_points for item in sublist]
 
-    return queue_sim.convert_a_multi_s_to_d(
+    res = queue_sim.convert_a_multi_s_to_d(
         flattened_points, delta_s, self.servers)
+    return res
 
 
 class Pipeline(object):
@@ -622,10 +623,11 @@ class Pipeline(object):
     return sum(lnlikes)
 
   def _execute(self, theta_arr):
+    initial_points = theta_arr[:-sum(x[0] for x in self.point_allocation)]
     theta = list(theta_arr)
     thetas = []
-    running_count = 0
-    for count, output in self.point_allocation:
+    running_count = len(initial_points)
+    for count, _ in self.point_allocation:
       thetas.append(theta[running_count:running_count + count])
       running_count += count
 
@@ -637,12 +639,12 @@ class Pipeline(object):
         lnlikes.append(obj.lnlike(last_out + thetas[idx + 1]))
         last_out = obj.output_arr(last_out + thetas[idx + 1])
     else:
-      a = self.pipes[0]._input_arr(theta_arr)
+      a = initial_points
       lnlikes = []
-      last_out = []
-      for idx, obj in enumerate(self.pipes):
-        lnlikes.append(obj.lnlike(last_out + thetas[idx]))
-        last_out = obj.output_arr(last_out + thetas[idx])
+      last_out = a
+      for obj, theta in zip(self.pipes, thetas):
+        lnlikes.append(obj.lnlike(last_out + theta))
+        last_out = obj.output_arr(last_out + theta)
     return lnlikes, a, last_out
 
 
