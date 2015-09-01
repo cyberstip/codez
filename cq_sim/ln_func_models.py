@@ -195,7 +195,7 @@ class KServerPipeline(Pipe):
     input, pipeline_thetas = self._get_input_and_pipeline_thetas(theta)
     s = []
     for a, pipeline_theta in zip(input, pipeline_thetas):
-      s.append(self.pipeline.get_a_d([a] + pipeline_theta)[1][0]
+      s.append(self.pipeline.get_a_d([a] + pipeline_theta)[1][0])
 
     self.pipeline.expected_points(len(points), duration)
     return queue_sim.convert_a_multi_s_to_d(
@@ -452,17 +452,18 @@ class Amalgamator(Source):
 
 class KServerAmalgamator(Source):
   def __init__(self, params):
-    assert 'servers' in params
-    self.servers = params['servers']
-    del params['servers']
-    assert(self.servers > 0)
+    super(KServerAmalgamator, self).__init__()
 
-    assert 'process_pipelines' in params
+    assert sorted(params.keys()) == [
+        'process_pipelines', 'servers', 'source_pipelines']
+
     self.process_pipelines = [Pipeline(p) for p in params['process_pipelines']]
-    del params['process_pipelines']
+    self.servers = params['servers']
+    self.source_pipelines = [Pipeline(x, initial=True)
+        for x in params['source_pipelines']]
 
-    super(KServerAmalgamator, self).__init__(params)
-
+    assert(self.servers > 0)
+    assert len(params['source_pipelines']) > 0
     assert len(self.process_pipelines) == len(self.source_pipelines)
 
   def lnlike(self, theta):
