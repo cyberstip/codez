@@ -300,21 +300,17 @@ class UnitTestLnFuncModels(FloatListTestCase):
     initial=True)
 
     expected_point_count = k_amal.expected_points_source(duration)[0]
-
-    #delete me
-    starter_points = k_amal.starter_points_source(duration)
-    print 'flarp', starter_points
-
     self.assertEqual(expected_point_count, 40)
 
     starter_points = k_amal.starter_points_source(duration)
-    print 'yarp', starter_points
     theta = [
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+        6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0,
         1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
-        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+        4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0]
     self.assertListAlmostEqual(starter_points, theta)
+
+    # calculate queue_sim, test against it
 
     a, d = k_amal.get_a_d(theta)
     self.assertEqual(a, theta)

@@ -470,7 +470,9 @@ class KServerAmalgamator(Source):
     source_thetas, process_thetas = self._get_pipe_process_thetas(theta)
 
     return sum(source.lnlike(source_theta) + process.lnlike(process_theta)
-               for source, process in zip(source_thetas, process_thetas))
+               for source, process, source_theta, process_theta in zip(
+                 self.source_pipelines, self.process_pipelines,
+                 source_thetas, process_thetas))
 
   def starter_points_source(self, duration):
     points = []
@@ -494,7 +496,8 @@ class KServerAmalgamator(Source):
       process_pipe_thetas.append(theta[running_count:running_count + process])
       running_count += process
 
-    assert (len(source_pipe_thetas) + len(process_pipe_thetas) == len(theta))
+    assert (sum(len(x) for x in source_pipe_thetas) +
+            sum(len(x) for x in process_pipe_thetas)) == len(theta)
 
     return source_pipe_thetas, process_pipe_thetas
 
@@ -505,10 +508,8 @@ class KServerAmalgamator(Source):
       pts = pipe.expected_points_source(duration)
       expected = process.expected_points(pts[1], duration)
       self.point_allocation.append([pts[0], expected[0]])
-      print 'jejeje', pts, expected
       points.append((expected[0] + pts[0], expected[1]))
 
-    print 'yerp', points
     res = sum(zip(*points)[0])
     out = sum(zip(*points)[1])
     return res, out
@@ -520,7 +521,7 @@ class KServerAmalgamator(Source):
     input_from_sources = []
     for group in [pipe.get_a_d(thetas)[0]
         for pipe, thetas in zip(
-          self.source_source_pipelines, source_pipe_thetas)]:
+          self.source_pipelines, source_pipe_thetas)]:
         input_from_sources.extend(group)
     return input_from_sources, self.output(theta)
 
@@ -530,7 +531,7 @@ class KServerAmalgamator(Source):
 
     initial_points = [pipe.get_a_d(thetas)[1]
         for pipe, thetas in zip(
-          self.source_source_pipelines, source_pipe_thetas)]
+          self.source_pipelines, source_pipe_thetas)]
 
     processed_points = [process.get_a_d(input + thetas)[1]
         for input, process, thetas in zip(
@@ -540,8 +541,10 @@ class KServerAmalgamator(Source):
     for initial, processed in zip(initial_points, processed_points):
       delta_s.extend(d - a for a, d in zip(initial, processed))
 
+    flattened_points = [item for sublist in initial_points for item in sublist]
+
     return queue_sim.convert_a_multi_s_to_d(
-        initial_points, delta_s, self.servers)
+        flattened_points, delta_s, self.servers)
 
 
 class Pipeline(object):
@@ -567,18 +570,11 @@ class Pipeline(object):
       self.pipes = pipeline_objs
     assert all(o.type == 'pipe' for o in self.pipes)
 
-  def start_count(self, source=False):
-    count = self.point_allocation[0][0]
-    if not source:
-      count -= self.point_allocation[0][1]
-    return count 
-
   def final_output_count(self):
     return self.point_allocation[-1][1]
 
   def get_a_d(self, theta):
-    _, last_out = self._execute(theta)
-    a = theta[0:self.start_count(source=self.source)]
+    _, a, last_out = self._execute(theta)
 
     assert len(a) == len(last_out)
     return (a, last_out)
@@ -622,7 +618,7 @@ class Pipeline(object):
         self.point_allocation[-1][1])
 
   def lnlike(self, theta_arr):
-    lnlikes, _ = self._execute(theta_arr)
+    lnlikes, _, _ = self._execute(theta_arr)
     return sum(lnlikes)
 
   def _execute(self, theta_arr):
@@ -634,18 +630,20 @@ class Pipeline(object):
       running_count += count
 
     if self.source:
+      a, _ = self.source.get_a_d(thetas[0])
       lnlikes = [self.source.lnlike(thetas[0])]
       last_out = list(self.source.output(thetas[0]))
       for idx, obj in enumerate(self.pipes):
         lnlikes.append(obj.lnlike(last_out + thetas[idx + 1]))
         last_out = obj.output_arr(last_out + thetas[idx + 1])
     else:
+      a = self.pipes[0]._input_arr(theta_arr)
       lnlikes = []
       last_out = []
       for idx, obj in enumerate(self.pipes):
         lnlikes.append(obj.lnlike(last_out + thetas[idx]))
         last_out = obj.output_arr(last_out + thetas[idx])
-    return lnlikes, last_out
+    return lnlikes, a, last_out
 
 
 PIPELINE_MODELS = {
