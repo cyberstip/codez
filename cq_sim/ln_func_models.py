@@ -183,13 +183,13 @@ class KServerPipeline(Pipe):
     return starter_points * len(points)
 
   def _get_input_and_pipeline_thetas(self, theta):
-    input = theta[:-self.point_len * pipeline_pts]
-    pipeline_theta = theta[-self.point_len * pipeline_pts:]
+    input = theta[:-self.point_len * self.pipeline_pts]
+    pipeline_theta = theta[-self.point_len * self.pipeline_pts:]
 
     def chunks(l, n):
       n = max(1, n)
       return [l[i:i + n] for i in range(0, len(l), n)]
-    return list(chunks(pipeline_theta, pipeline_pts))
+    return list(chunks(pipeline_theta, self.pipeline_pts))
 
   def output_arr(self, theta):
     input, pipeline_thetas = self._get_input_and_pipeline_thetas(theta)
