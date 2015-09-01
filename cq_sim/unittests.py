@@ -300,6 +300,11 @@ class UnitTestLnFuncModels(FloatListTestCase):
     initial=True)
 
     expected_point_count = k_amal.expected_points_source(duration)[0]
+
+    #delete me
+    starter_points = k_amal.starter_points_source(duration)
+    print 'flarp', starter_points
+
     self.assertEqual(expected_point_count, 40)
 
     starter_points = k_amal.starter_points_source(duration)

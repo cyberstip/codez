@@ -505,9 +505,10 @@ class KServerAmalgamator(Source):
       pts = pipe.expected_points_source(duration)
       expected = process.expected_points(pts[1], duration)
       self.point_allocation.append([pts[0], expected[0]])
+      print 'jejeje', pts, expected
       points.append((expected[0] + pts[0], expected[1]))
 
-    print points
+    print 'yerp', points
     res = sum(zip(*points)[0])
     out = sum(zip(*points)[1])
     return res, out
@@ -604,8 +605,6 @@ class Pipeline(object):
 
   def expected_points(self, points, duration):
     self.point_allocation = [self.pipes[0].expected_points(points, duration)]
-    self.point_allocation[0] = (
-        self.point_allocation[0][0] + points, self.point_allocation[0][1])
     for obj in self.pipes[1:]:
       self.point_allocation.append(
           obj.expected_points(self.point_allocation[-1][1]))
