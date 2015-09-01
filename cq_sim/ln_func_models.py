@@ -469,7 +469,8 @@ class KServerAmalgamator(Source):
   def lnlike(self, theta):
     source_thetas, process_thetas = self._get_pipe_process_thetas(theta)
 
-    return sum(source.lnlike(source_theta) + process.lnlike(process_theta)
+    return sum(source.lnlike(source_theta) +
+                  process.lnlike(source_theta + process_theta)
                for source, process, source_theta, process_theta in zip(
                  self.source_pipelines, self.process_pipelines,
                  source_thetas, process_thetas))
@@ -635,6 +636,7 @@ class Pipeline(object):
       a, _ = self.source.get_a_d(thetas[0])
       lnlikes = [self.source.lnlike(thetas[0])]
       last_out = list(self.source.output(thetas[0]))
+
       for idx, obj in enumerate(self.pipes):
         lnlikes.append(obj.lnlike(last_out + thetas[idx + 1]))
         last_out = obj.output_arr(last_out + thetas[idx + 1])
