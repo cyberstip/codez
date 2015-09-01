@@ -410,7 +410,7 @@ class Amalgamator(Source):
     points = [pipe.expected_points_source(duration)
               for pipe in self.source_pipelines]
     self.point_allocation = list(zip(*points)[0])
-    return [sum(x) for x in zip(*points)[0]]
+    return sum(self.point_allocation), sum(zip(*points)[1])
 
   def _point_allocation_slices(self, theta):
     theta = list(theta)
@@ -507,8 +507,9 @@ class KServerAmalgamator(Source):
       self.point_allocation.append([pts[0], expected[0]])
       points.append((expected[0] + pts[0], expected[1]))
 
-    res = [sum(x) for x in zip(*points)[0]]
-    out = [sum(x) for x in zip(*points)[1]]
+    print points
+    res = sum(zip(*points)[0])
+    out = sum(zip(*points)[1])
     return res, out
 
   def get_a_d(self, theta):
